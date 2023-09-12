@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<html lang="en">
+    <head>
+        <title>Map Editor</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta property="og:title" content="Map Editor" />
+        <meta property="og:description" content="" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="" />
+        <meta property="og:image" content="" />
+        <!-- build:css -->
+        <link rel="stylesheet" type="text/css" href="./styles.css" />
+        <!-- endbuild -->
+    </head>
+    <body>
+        <div id="editor-window">
+            <div id="map-wrapper">
+                <table id="map" cellspacing="0" cellpadding="0"></table>
+            </div>
+            <div id="palette-wrapper">
+                <table id="palette" cellspacing="0" cellpadding="0"></table>
+            </div>
+        </div>
+        <div id="data-window">
+            <textarea id="data-area" rows="10" cols="50"></textarea>
+            <button id="save-button">Save</button>
+            <button id="load-button">Load</button>
+        </div>
+        <script lang="js">
+            var mouseClicked = -1;
+            var selectedIndex = 1;
+            var indecies = [];
+            var cells = [];
+            var lastOver = null;
+
+            var doubleTall = [
+                45,
+                49,
+                79,
+                91,
+                93
+            ];
+
+            function resetTile(x, y, target) {
+                indecies[y][x] = [];
+                while(target.firstChild) {
+                    target.removeChild(target.firstChild);
+                }
+            }
+
+            function addSecondImage(x, y, index = selectedIndex) {
+                const secondImg = document.createElement('img');
+                    secondImg.src = `./tiles${index + 11}.png`;
+                    secondImg.draggable = false;
+                    cells[y + 1][x].appendChild(secondImg);
+            }
+
+            function addImageToTile(x, y, target, index = selectedIndex) {
+                indecies[y][x].push(index);
+
+                const img = document.createElement('img');
+                img.src = `./tiles${index}.png`;
+                img.draggable = false;
+
+                target.appendChild(img);
+            }
+
+            const map = document.getElementById('map');
+
+            document.body.onmousedown = (event) => mouseClicked = event.button;
+            document.body.onmouseup = () => mouseClicked = -1;
+            window.addEventListener('keydown', (event) => {
+                console.log(event.key);
+                if (event.key === 'Shift') {
+                    mouseClicked = 1;
+                }
+            });
+            window.addEventListener('keyup', (event) => {
+                if (event.key === 'Shift') {
+                    mouseClicked = -1;
+                }
+            });
+
+            for (let y = 0; y < 18; y++) {
+                const row = document.createElement('tr');
+                cells.push([]);
+                indecies.push([]);
+                for (let x = 0; x < 25; x++) {
+                    indecies[indecies.length  -1].push([1]);
+                    const cell = document.createElement('td');
+
+                    const img = document.createElement('img');
+                    img.src = './tiles1.png';
+                    img.draggable = false;
+
+                    cell.appendChild(img);
+
+                    cell.onmousedown = (event) => {
+                        if (event.button === 1) {
+                            resetTile(x, y, event.currentTarget);
+                        }
+
+                        if (indecies[y][x].includes(selectedIndex)) return;
+                        
+                        lastOver = event.currentTarget;
+                        if (event.button === 0) {
+                            addImageToTile(x, y, event.currentTarget);
+
+                            if (doubleTall.includes(selectedIndex)) {
+                                addSecondImage(x, y, selectedIndex);
+                            }
+                        }
+                    };
+
+                    cell.onmouseover = (event) => {
+                        if (mouseClicked === 1) {
+                            resetTile(x, y, event.currentTarget);
+                        }
+
+                        if (lastOver === event.currentTarget || indecies[y][x].includes(selectedIndex)) return;
+
+                        lastOver = event.currentTarget;
+                        if (mouseClicked === 0) {
+                            addImageToTile(x, y, event.currentTarget);
+                        }
+                    };
+                    cells[cells.length  -1].push(cell);
+                    row.appendChild(cell);
+                }
+                map.appendChild(row);
+            }
+
+            const palette = document.getElementById('palette');
+            let paletteIndex = 1;
+            for (let y = 0; y < 11; y++) {
+                const row = document.createElement('tr');
+                for (let x = 0; x < 11; x++) {
+                    const currentIndex = paletteIndex;
+                    const cell = document.createElement('td');
+                    const img = document.createElement('img');
+                    img.src = `./tiles${paletteIndex}.png`;
+                    cell.appendChild(img);
+                    
+                    cell.onclick = () => {
+                        selectedIndex = currentIndex;
+                    };
+                    
+                    row.appendChild(cell);
+                    paletteIndex++;
+                }
+                palette.appendChild(row);
+            }
+
+            const saveButton = document.getElementById('save-button');
+            saveButton.onclick = () => {
+                document.getElementById('data-area').value = JSON.stringify(indecies);
+            };
+
+            const loadButton = document.getElementById('load-button');
+            loadButton.onclick = () => {
+                for (let y = 0; y < indecies.length; y++) {
+                    for (let x = 0; x < indecies[y].length; x++) {
+                        indecies[y][x] = [];
+                    }
+                }
+                
+                const data = JSON.parse(document.getElementById('data-area').value.trim());
+
+                const doubleTalls = [];
+
+                for (let y = 0; y < 18; y++) {
+                    for (let x = 0; x < 25; x++) {
+                        for (let i = 0; i < data[y][x].length; i++) {
+                            addImageToTile(x, y, cells[y][x], data[y][x][i]);
+                            if (doubleTall.includes(data[y][x][i])) {
+                                doubleTalls.push([x, y, data[y][x][i]]);
+                            }
+                        }
+                    }
+                }
+
+                for (let i = 0; i < doubleTalls.length; i++) {
+                    addSecondImage(...doubleTalls[i]);
+                }
+            }
+        </script>
+    </body>
+</html>
